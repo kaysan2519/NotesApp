@@ -1,0 +1,46 @@
+import express, { Application, Request, Response } from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import { env } from './config/env';
+import { sendSuccess } from './utils/response.util';
+import { notFoundMiddleware } from './middleware/not-found.middleware';
+import { errorMiddleware } from './middleware/error.middleware';
+
+const app: Application = express();
+
+// 1. Security HTTP Headers
+app.use(helmet());
+
+// 2. Cross-Origin Resource Sharing (CORS)
+app.use(
+  cors({
+    origin: env.CORS_ORIGIN === '*' ? '*' : env.CORS_ORIGIN.split(','),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// 3. HTTP Request Logging (non-test environment)
+if (env.NODE_ENV !== 'test') {
+  app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+}
+
+// 4. Body Parser dengan pembatasan ukuran payload (mencegah payload besar)
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+// 5. Health Check Endpoint
+app.get('/api/health', (_req: Request, res: Response) => {
+  sendSuccess(res, 'MyNotes API is running', {
+    status: 'healthy',
+  });
+});
+
+// 6. 404 Not Found Handler
+app.use(notFoundMiddleware);
+
+// 7. Centralized Error Handler
+app.use(errorMiddleware);
+
+export default app;
