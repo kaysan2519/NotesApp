@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/constants/app_colors.dart';
+import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'widgets/pastel_background.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,24 +17,13 @@ class MyNotesApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return MaterialApp(
+    final router = ref.watch(goRouterProvider);
+
+    return MaterialApp.router(
       title: 'MyNotes',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const Scaffold(
-        body: PastelBackground(
-          child: Center(
-            child: Text(
-              'MyNotes',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
+      routerConfig: router,
     );
   }
 }
