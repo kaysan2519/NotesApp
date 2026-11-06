@@ -1,8 +1,6 @@
 # MyNotes — Personal Notes Management Application
 
-**MyNotes** adalah aplikasi pencatatan pribadi (*Personal Notes Management Application*) yang dirancang untuk membuat, menyimpan, mengelola, dan mengatur catatan pribadi pengguna secara aman, cepat, dan terstruktur.
-
-Project ini menggunakan arsitektur monorepo terpisah antara **Backend REST API** (`./backend`) dan **Frontend Mobile Application** (`./frontend`).
+**MyNotes** adalah aplikasi pencatatan pribadi (*Personal Notes Management Application*) full-stack yang terdiri dari **Backend REST API (Express.js + TypeScript + MySQL)** dan **Frontend Mobile Application (Flutter + Dart)**.
 
 ---
 
@@ -10,13 +8,11 @@ Project ini menggunakan arsitektur monorepo terpisah antara **Backend REST API**
 
 1. [Project Overview](#1-project-overview)
 2. [Technology Stack](#2-technology-stack)
-3. [Prerequisites](#3-prerequisites)
-4. [Arsitektur Repository](#4-arsitektur-repository)
-5. [Instalasi & Setup Backend](#5-instalasi--setup-backend)
-6. [Setup Database & Migrasi](#6-setup-database--migrasi)
-7. [Perintah Development, Build, & Testing](#7-perintah-development-build--testing)
-8. [Ringkasan Endpoint REST API](#8-ringkasan-endpoint-rest-api)
-9. [Dokumentasi Teknis Lengkap](#9-dokumentasi-teknis-lengkap)
+3. [Arsitektur Repository](#3-arsitektur-repository)
+4. [Panduan Menjalankan Backend & Flutter Bersamaan](#4-panduan-menjalankan-backend--flutter-bersamaan)
+5. [Perintah Pengujian & Build](#5-perintah-pengujian--build)
+6. [Ringkasan Endpoint REST API](#6-ringkasan-endpoint-rest-api)
+7. [Dokumentasi Teknis Lengkap](#7-dokumentasi-teknis-lengkap)
 
 ---
 
@@ -26,90 +22,55 @@ Pengguna aplikasi **MyNotes** dapat:
 1. Membuat akun pengguna baru (*Register*).
 2. Login menggunakan email dan password berbasis JWT (*JSON Web Token*).
 3. Melihat seluruh catatan miliknya yang diurutkan otomatis (*pinned* terlebih dahulu, lalu berdasarkan waktu perubahan terbaru).
-4. Membuat catatan baru dengan pilihan warna kartu.
+4. Membuat catatan baru dengan pilihan warna kartu pastel.
 5. Membaca detail catatan.
 6. Mengedit judul, isi, warna, maupun pengaturan catatan.
-7. Menghapus catatan secara permanen dari database MySQL.
-8. Mengatur warna kartu catatan dari 8 palet warna pastel resmi.
+7. Menghapus catatan secara permanen dari database MySQL dengan konfirmasi.
+8. Mengatur warna kartu catatan dari 8 palet warna pastel resmi (`#A5F3AD`, `#D8A7F5`, `#F6DB59`, `#F2A3A6`, `#70DDC7`, `#83BCEB`, `#D9D9D9`, `#FFFFFF`).
 9. Menandai catatan penting menggunakan fitur *Pin*.
 10. Mengatur status privasi catatan (*Private Setting*).
 11. Mencari catatan berdasarkan kata kunci pada judul (*title*) maupun isi (*content*).
-12. Logout dari aplikasi.
-
-Seluruh data disimpan secara permanen di database **MySQL** (`mynotes_db`) dengan proteksi kepemilikan data (*ownership authorization*) sehingga Pengguna A tidak dapat membaca, mengubah, atau menghapus catatan milik Pengguna B.
+12. Logout dari aplikasi dengan pembersihan token dari penyimpanan aman.
 
 ---
 
 ## 2. Technology Stack
 
 ### Backend (`./backend`)
-- **Runtime:** Node.js LTS (v20+ / v22+)
-- **Framework:** Express.js 4
-- **Programming Language:** TypeScript 5 (`strict: true`)
+- **Runtime & Framework:** Node.js LTS + Express.js
+- **Language:** TypeScript (`strict: true`)
 - **Database:** MySQL / MariaDB (`mysql2/promise` connection pool)
-- **Authentication:** JSON Web Token (`jsonwebtoken`)
-- **Password Hashing:** `bcrypt`
+- **Authentication & Security:** JWT (`jsonwebtoken`), `bcrypt`, `helmet`, `cors`, `express-rate-limit`
 - **Validation:** `zod`
-- **Security:** `helmet`, `cors`, `express-rate-limit`
-- **Logging:** `morgan`
-- **Testing:** `vitest` & `supertest`
+- **Testing:** `vitest` & `supertest` (25 integration tests)
 
-### Frontend (`./frontend` — *Tahap Berikutnya*)
-- **Framework:** Flutter
-- **Language:** Dart
-
----
-
-## 3. Prerequisites
-
-Pastikan perangkat Anda telah terinstal:
-- **Node.js** v18 LTS atau lebih baru (direkomendasikan v20 / v22 LTS)
-- **npm** v9 atau lebih baru
-- **MySQL Server** 8.0+ atau **MariaDB** 10.4+ (misalnya melalui XAMPP, Laragon, atau MySQL Installer)
-- **Git**
+### Frontend (`./frontend`)
+- **Framework & Language:** Flutter 3 + Dart 3
+- **Design System:** Material 3 Custom Design System (Cream pastel background, colorful note cards, dark pill buttons `#202020`)
+- **State Management:** Riverpod (`flutter_riverpod`)
+- **Navigation:** GoRouter (`go_router`)
+- **HTTP Client:** Dio (`dio`) dengan JWT Bearer Interceptor & 401 handler
+- **Secure Storage:** `flutter_secure_storage`
+- **Date Formatting:** `intl`
 
 ---
 
-## 4. Arsitektur Repository
+## 3. Arsitektur Repository
 
 ```text
 MyNotes/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   │   ├── env.ts                # Validasi variabel environment (Zod)
-│   │   │   ├── database.ts           # MySQL connection pool (mysql2/promise)
-│   │   │   └── note-colors.ts        # Konfigurasi terpusat palet warna catatan
-│   │   ├── modules/
-│   │   │   ├── auth/                 # Modul autentikasi (routes, controller, service, repo, validation, types)
-│   │   │   └── notes/                # Modul CRUD catatan (routes, controller, service, repo, validation, types)
-│   │   ├── middleware/
-│   │   │   ├── auth.middleware.ts    # Proteksi Bearer JWT
-│   │   │   ├── validate.middleware.ts# Validasi request body/query/params (Zod)
-│   │   │   ├── rate-limit.middleware.ts # Pembatasan request (anti brute-force)
-│   │   │   ├── not-found.middleware.ts  # Penanganan endpoint 404
-│   │   │   └── error.middleware.ts   # Centralized error handler
-│   │   ├── utils/
-│   │   │   ├── password.util.ts      # Hashing & verifikasi password (bcrypt)
-│   │   │   ├── jwt.util.ts           # Pembuatan & verifikasi JWT
-│   │   │   └── response.util.ts      # Format standar JSON response & AppError
-│   │   ├── types/
-│   │   │   └── express.d.ts          # Augmentasi tipe Express.Request
-│   │   ├── database/
-│   │   │   └── migrate.ts            # Migration runner SQL otomatis & aman
-│   │   ├── app.ts                    # Konfigurasi aplikasi Express
-│   │   └── server.ts                 # Entry point HTTP server & graceful shutdown
-│   ├── database/
-│   │   ├── migrations/               # File SQL pembuatan tabel users & notes
-│   │   └── seeds/                    # Direktori seeder opsional
-│   ├── docs/                         # Dokumentasi teknis lengkap
-│   ├── tests/                        # Integration tests (auth, notes, database)
-│   ├── .env.example                  # Template variabel environment
-│   ├── package.json                  # Dependencies & scripts backend
-│   ├── tsconfig.json                 # Konfigurasi TypeScript strict mode
-│   └── vitest.config.ts              # Konfigurasi pengujian Vitest
-├── frontend/
-│   └── README.md                     # Placeholder untuk aplikasi Flutter
+├── backend/                  # Express.js + TypeScript + MySQL REST API
+│   ├── src/                  # Source code modular (config, modules, middleware, utils, database)
+│   ├── database/migrations/  # File migrasi SQL tabel users & notes
+│   ├── docs/                 # Dokumentasi API, struktur project, panduan dev & integrasi Flutter
+│   └── tests/                # 25 integration tests (Vitest + Supertest)
+│
+├── frontend/                 # Aplikasi Mobile Flutter
+│   ├── lib/                  # Source code modular (config, core, models, services, providers, screens, widgets)
+│   ├── test/                 # Widget tests & API service contract tests
+│   ├── android/              # Konfigurasi platform Android
+│   └── pubspec.yaml          # Konfigurasi dependencies Flutter
+│
 ├── .gitignore
 ├── README.md
 └── LICENSE
@@ -117,78 +78,49 @@ MyNotes/
 
 ---
 
-## 5. Instalasi & Setup Backend
+## 4. Panduan Menjalankan Backend & Flutter Bersamaan
 
-1. Masuk ke direktori `backend`:
+### A. Menjalankan Backend (`./backend`)
+1. Pastikan service **MySQL / MariaDB** aktif di port `3306`.
+2. Buka terminal di folder `backend/`:
    ```bash
    cd backend
-   ```
-
-2. Instal seluruh dependencies:
-   ```bash
    npm install
-   ```
-
-3. Salin file `.env.example` menjadi `.env`:
-   ```bash
    cp .env.example .env
+   npm run migrate
+   npm run dev
    ```
-   *(Di Windows PowerShell: `Copy-Item .env.example .env`)*
+   Server REST API akan aktif di `http://localhost:3000`.
 
-4. Sesuaikan nilai di dalam `backend/.env` dengan konfigurasi MySQL lokal Anda:
-   ```env
-   NODE_ENV=development
-   PORT=3000
-
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=
-   DB_NAME=mynotes_db
-
-   JWT_SECRET=ganti_dengan_secret_key_rahasia_anda
-   JWT_EXPIRES_IN=1d
-
-   BCRYPT_SALT_ROUNDS=12
-
-   CORS_ORIGIN=*
+### B. Menjalankan Frontend Flutter (`./frontend`)
+1. Buka terminal baru di folder `frontend/`:
+   ```bash
+   cd frontend
+   flutter pub get
+   flutter run
    ```
+2. **Koneksi Jaringan Otomatis:**
+   - Pada **Android Emulator**, aplikasi otomatis terhubung ke `http://10.0.2.2:3000/api`.
+   - Pada **Windows / Web / iOS Simulator**, aplikasi otomatis terhubung ke `http://localhost:3000/api`.
+   - Pada **Perangkat Fisik (HP Android)**, gunakan `--dart-define=API_BASE_URL=http://<IP_KOMPUTER>:3000/api` atau ubah melalui tombol pengaturan API di pojok kanan atas layar Login.
 
 ---
 
-## 6. Setup Database & Migrasi
+## 5. Perintah Pengujian & Build
 
-Pastikan layanan **MySQL / MariaDB** sedang berjalan di komputer Anda, lalu jalankan perintah migrasi berikut dari dalam folder `backend/`:
+### Backend (`./backend`)
+- `npm run typecheck` — Pemeriksaan tipe TypeScript (`tsc --noEmit`).
+- `npm run build` — Kompilasi production ke `dist/`.
+- `npm test` — Menjalankan 25 integration tests pada database uji terpisah (`mynotes_test_db`).
 
-```bash
-npm run migrate
-```
-
-Migration runner akan secara otomatis:
-1. Membuat database `mynotes_db` apabila belum tersedia (`CREATE DATABASE IF NOT EXISTS`).
-2. Membuat tabel pencatat migrasi `schema_migrations`.
-3. Menjalankan `001_create_users_table.sql` dan `002_create_notes_table.sql` secara berurutan tanpa menghapus data yang sudah ada.
-
----
-
-## 7. Perintah Development, Build, & Testing
-
-Jalankan perintah berikut dari dalam direktori `backend/`:
-
-| Perintah | Fungsi |
-|---|---|
-| `npm run dev` | Menjalankan server development dengan auto-reload (`tsx watch src/server.ts`) |
-| `npm run typecheck` | Memeriksa tipe TypeScript secara menyeluruh (`tsc --noEmit`) |
-| `npm run build` | Mengompilasi kode TypeScript ke folder `dist/` (`tsc`) |
-| `npm start` | Menjalankan hasil build production (`node dist/server.js`) |
-| `npm run migrate` | Menjalankan migrasi database MySQL |
-| `npm test` | Menjalankan seluruh integration test pada database uji terpisah (`mynotes_test_db`) |
+### Frontend (`./frontend`)
+- `flutter analyze` — Analisis statis kode Dart/Flutter.
+- `flutter test` — Menjalankan seluruh widget test & API service test.
+- `flutter build apk --debug` — Membangun file APK Debug Android.
 
 ---
 
-## 8. Ringkasan Endpoint REST API
-
-Base URL: `http://localhost:3000/api`
+## 6. Ringkasan Endpoint REST API
 
 | Method | Endpoint | Auth JWT | Deskripsi |
 |---|---|---|---|
@@ -197,7 +129,7 @@ Base URL: `http://localhost:3000/api`
 | `POST` | `/api/auth/login` | Tidak | Login pengguna dan mendapatkan JWT token |
 | `GET` | `/api/auth/me` | **Wajib** | Mengambil profil pengguna yang sedang login |
 | `POST` | `/api/notes` | **Wajib** | Membuat catatan baru |
-| `GET` | `/api/notes` | **Wajib** | Mengambil daftar catatan (mendukung `?search=`, `?is_pinned=`, `?color=`) |
+| `GET` | `/api/notes` | **Wajib** | Mengambil daftar catatan (`?search=`, `?is_pinned=`, `?color=`) |
 | `GET` | `/api/notes/:id` | **Wajib** | Mengambil detail satu catatan milik pengguna |
 | `PUT` | `/api/notes/:id` | **Wajib** | Memperbarui isi/pengaturan catatan |
 | `DELETE` | `/api/notes/:id` | **Wajib** | Menghapus catatan secara permanen |
@@ -206,10 +138,10 @@ Base URL: `http://localhost:3000/api`
 
 ---
 
-## 9. Dokumentasi Teknis Lengkap
+## 7. Dokumentasi Teknis Lengkap
 
-Dokumentasi mendalam tersedia di dalam folder `backend/docs/`:
-- [API_DOCUMENTATION.md](backend/docs/API_DOCUMENTATION.md) — Spesifikasi lengkap seluruh endpoint, contoh request/response JSON, status code, dan panduan pengujian Postman.
-- [PROJECT_STRUCTURE.md](backend/docs/PROJECT_STRUCTURE.md) — Penjelasan fungsi setiap folder, file, controller, service, repository, middleware, dan utilitas.
-- [DEVELOPMENT_GUIDE.md](backend/docs/DEVELOPMENT_GUIDE.md) — Panduan langkah demi langkah untuk memodifikasi fitur, menambah endpoint, mengubah skema database, dan menjalankan pengujian.
-- [FLUTTER_INTEGRATION_GUIDE.md](backend/docs/FLUTTER_INTEGRATION_GUIDE.md) — Panduan lengkap mengintegrasikan aplikasi mobile Flutter dengan backend MyNotes REST API.
+- [frontend/README.md](frontend/README.md) — Dokumentasi arsitektur dan penggunaan aplikasi Flutter.
+- [backend/docs/API_DOCUMENTATION.md](backend/docs/API_DOCUMENTATION.md) — Spesifikasi lengkap seluruh endpoint REST API.
+- [backend/docs/PROJECT_STRUCTURE.md](backend/docs/PROJECT_STRUCTURE.md) — Penjelasan fungsi setiap folder dan file backend.
+- [backend/docs/DEVELOPMENT_GUIDE.md](backend/docs/DEVELOPMENT_GUIDE.md) — Panduan modifikasi dan pengembangan fitur.
+- [backend/docs/FLUTTER_INTEGRATION_GUIDE.md](backend/docs/FLUTTER_INTEGRATION_GUIDE.md) — Panduan integrasi Flutter dengan REST API.
