@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { env } from './config/env';
 import { testDatabaseConnection } from './config/database';
 import { sendSuccess } from './utils/response.util';
+import authRoutes from './modules/auth/auth.routes';
 import { notFoundMiddleware } from './middleware/not-found.middleware';
 import { errorMiddleware } from './middleware/error.middleware';
 
@@ -44,10 +45,13 @@ app.get('/api/health', async (_req: Request, res: Response, next: NextFunction) 
   }
 });
 
-// 6. 404 Not Found Handler
+// 6. Module Routes
+app.use('/api/auth', authRoutes);
+
+// 7. 404 Not Found Handler
 app.use(notFoundMiddleware);
 
-// 7. Centralized Error Handler
+// 8. Centralized Error Handler
 app.use(errorMiddleware);
 
 export default app;
