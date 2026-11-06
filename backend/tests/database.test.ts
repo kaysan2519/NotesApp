@@ -3,10 +3,25 @@ import express from 'express';
 import request from 'supertest';
 import { ResultSetHeader } from 'mysql2/promise';
 import app from '../src/app';
-import { pool, testDatabaseConnection, closeDatabasePool } from '../src/config/database';
-import { env } from '../src/config/env';
+import {
+  pool,
+  testDatabaseConnection,
+  closeDatabasePool,
+  buildDatabaseSslOptions,
+  buildDatabasePoolOptions,
+} from '../src/config/database';
+import { env, parseEnv } from '../src/config/env';
 import { runMigrations } from '../src/database/migrate';
 import { errorMiddleware } from '../src/middleware/error.middleware';
+
+const DUMMY_PEM_CERT = [
+  '-----BEGIN CERTIFICATE-----',
+  'MIIBszCCAVugAwIBAgIUdGVzdC1kdW1teS1jYS1jZXJ0aWZpY2F0ZTAeFw0yNjAx',
+  'MDEwMDAwMDBaFw0zNjAxMDEwMDAwMDBaMBcxFTATBgNVBAMMDHd3dy50ZXN0LmNv',
+  '-----END CERTIFICATE-----',
+].join('\n');
+
+const DUMMY_CA_BASE64 = Buffer.from(DUMMY_PEM_CERT, 'utf-8').toString('base64');
 
 describe('Database & Error Handling Integration Tests', () => {
   beforeAll(async () => {
@@ -110,4 +125,106 @@ describe('Database & Error Handling Integration Tests', () => {
     expect(connRes.status).toBe(503);
     expect(connRes.body.success).toBe(false);
   });
+
+  it('5. Konfigurasi database lokal (XAMPP) tetap kompatibel tanpa SSL saat DB_SSL=false', () => {
+    const parsed = parseEnv({
+      NODE_ENV: 'development',
+      PORT: '3000',
+      DB_HOST: 'localhost',
+      DB_PORT: '3306',
+      DB_USER: 'root',
+      DB_PASSWORD: '',
+      DB_NAME: 'mynotes_db',
+      DB_SSL: 'false',
+      DB_SSL_CA_BASE64: '',
+      JWT_SECRET: 'test_local_jwt_secret',
+    });
+
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+
+    expect(parsed.data.DB_SSL).toBe(false);
+    const sslOptions = buildDatabaseSslOptions(parsed.data);
+    expect(sslOptions).toBeUndefined();
+
+    const poolOptions = buildDatabasePoolOptions(parsed.data);
+    expect(poolOptions.ssl).toBeUndefined();
+    expect(poolOptions.host).toBe('localhost');
+    expect(poolOptions.database).toBe('mynotes_db');
+  });
+
+  it('6. Konfigurasi SSL/TLS men-decode DB_SSL_CA_BASE64 dan mengaktifkan rejectUnauthorized: true saat DB_SSL=true', () => {
+    const parsed = parseEnv({
+      NODE_ENV: 'production',
+      PORT: '3000',
+      DB_HOST: 'mysql-example.aivencloud.com',
+      DB_PORT: '17374',
+      DB_USER: 'avnadmin',
+      DB_PASSWORD: 'placeholder_password_for_unit_test',
+      DB_NAME: 'defaultdb',
+      DB_SSL: 'true',
+      DB_SSL_CA_BASE64: DUMMY_CA_BASE64,
+      JWT_SECRET: 'test_production_jwt_secret',
+    });
+
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+
+    expect(parsed.data.DB_SSL).toBe(true);
+    const sslOptions = buildDatabaseSslOptions(parsed.data);
+    expect(sslOptions).toBeDefined();
+    expect(sslOptions).toEqual({
+      ca: DUMMY_PEM_CERT,
+      rejectUnauthorized: true,
+    });
+
+    const poolOptions = buildDatabasePoolOptions(parsed.data);
+    expect(poolOptions.ssl).toEqual({
+      ca: DUMMY_PEM_CERT,
+      rejectUnauthorized: true,
+    });
+  });
+
+  it('7. Validasi menolak konfigurasi DB_SSL=true jika DB_SSL_CA_BASE64 kosong atau tidak valid', () => {
+    const missingCa = parseEnv({
+      NODE_ENV: 'production',
+      DB_HOST: 'mysql-example.aivencloud.com',
+      DB_PORT: '17374',
+      DB_USER: 'avnadmin',
+      DB_PASSWORD: 'placeholder_password',
+      DB_NAME: 'defaultdb',
+      DB_SSL: 'true',
+      DB_SSL_CA_BASE64: '',
+      JWT_SECRET: 'test_production_jwt_secret',
+    });
+
+    expect(missingCa.success).toBe(false);
+    if (!missingCa.success) {
+      const paths = missingCa.error.issues.map((i) => i.path.join('.'));
+      expect(paths).toContain('DB_SSL_CA_BASE64');
+    }
+
+    const invalidCa = parseEnv({
+      NODE_ENV: 'production',
+      DB_HOST: 'mysql-example.aivencloud.com',
+      DB_PORT: '17374',
+      DB_USER: 'avnadmin',
+      DB_PASSWORD: 'placeholder_password',
+      DB_NAME: 'defaultdb',
+      DB_SSL: 'true',
+      DB_SSL_CA_BASE64: Buffer.from('not-a-valid-pem-certificate').toString('base64'),
+      JWT_SECRET: 'test_production_jwt_secret',
+    });
+
+    expect(invalidCa.success).toBe(false);
+
+    expect(() =>
+      buildDatabaseSslOptions({
+        NODE_ENV: 'production',
+        DB_SSL: true,
+        DB_SSL_CA_BASE64: '',
+      })
+    ).toThrow(/DB_SSL_CA_BASE64/i);
+  });
 });
+

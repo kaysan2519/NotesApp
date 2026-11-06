@@ -39,10 +39,11 @@ Pengguna aplikasi **MyNotes** dapat:
 ### Backend (`./backend`)
 - **Runtime & Framework:** Node.js LTS + Express.js
 - **Language:** TypeScript (`strict: true`)
-- **Database:** MySQL / MariaDB (`mysql2/promise` connection pool)
+- **Database:** MySQL / MariaDB (`mysql2/promise` connection pool, mendukung XAMPP lokal & Aiven Cloud MySQL dengan SSL/TLS `DB_SSL` + `DB_SSL_CA_BASE64`)
 - **Authentication & Security:** JWT (`jsonwebtoken`), `bcrypt`, `helmet`, `cors`, `express-rate-limit`
 - **Validation:** `zod`
-- **Testing:** `vitest` & `supertest` (25 integration tests)
+- **Testing:** `vitest` & `supertest` (28 integration & configuration tests)
+
 
 ### Frontend (`./frontend`)
 - **Framework & Language:** Flutter 3 + Dart 3

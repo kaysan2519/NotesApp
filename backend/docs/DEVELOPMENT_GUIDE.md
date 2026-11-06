@@ -140,7 +140,7 @@ Jika Anda ingin menambahkan field baru (misalnya `timestamp` pada setiap respons
 
 ## 7. Cara Menjalankan Testing
 
-Pengujian integrasi menggunakan **Vitest** dan **Supertest** pada database terpisah (`mynotes_test_db`) sehingga data asli Anda di `mynotes_db` tetap aman:
+Pengujian integrasi menggunakan **Vitest** dan **Supertest** pada database terpisah (`mynotes_test_db` dengan `DB_SSL=false`) sehingga data asli Anda di `mynotes_db` maupun database production Aiven tetap aman dan tidak pernah disentuh saat testing:
 
 ```bash
 # Menjalankan seluruh test satu kali
@@ -152,3 +152,25 @@ npm run test:watch
 # Memeriksa tipe TypeScript
 npm run typecheck
 ```
+
+---
+
+## 8. Konfigurasi Database Lokal (XAMPP) vs Production (Aiven MySQL + SSL)
+
+Konfigurasi koneksi database dikelola di `backend/src/config/env.ts` dan `backend/src/config/database.ts`:
+
+1. **Mode Lokal (XAMPP — Default):**
+   - `DB_SSL=false`
+   - `DB_SSL_CA_BASE64=` (kosong)
+   - `buildDatabaseSslOptions()` mengembalikan `undefined` sehingga `mysql2/promise` terhubung ke MySQL lokal tanpa SSL.
+
+2. **Mode Production (Aiven MySQL + Vercel):**
+   - `DB_SSL=true`
+   - `DB_SSL_CA_BASE64=<BASE64_DARI_FILE_CA_PEM>`
+   - Zod (`envSchema`) memvalidasi bahwa `DB_SSL_CA_BASE64` wajib tersedia dan berisi sertifikat PEM yang valid ketika `DB_SSL=true`.
+   - `buildDatabaseSslOptions()` men-decode string Base64 menjadi sertifikat PEM UTF-8 dan mengembalikan `{ ca: decodedCa, rejectUnauthorized: true }` ke pool `mysql2/promise`.
+   - Untuk menghasilkan string Base64 dari `ca.pem` di PowerShell:
+     ```powershell
+     [Convert]::ToBase64String([IO.File]::ReadAllBytes("ca.pem"))
+     ```
+
