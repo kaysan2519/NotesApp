@@ -1,8 +1,9 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import { env } from './config/env';
+import { testDatabaseConnection } from './config/database';
 import { sendSuccess } from './utils/response.util';
 import { notFoundMiddleware } from './middleware/not-found.middleware';
 import { errorMiddleware } from './middleware/error.middleware';
@@ -30,11 +31,17 @@ if (env.NODE_ENV !== 'test') {
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// 5. Health Check Endpoint
-app.get('/api/health', (_req: Request, res: Response) => {
-  sendSuccess(res, 'MyNotes API is running', {
-    status: 'healthy',
-  });
+// 5. Health Check Endpoint (termasuk pemeriksaan status koneksi database)
+app.get('/api/health', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dbConnected = await testDatabaseConnection();
+    sendSuccess(res, 'MyNotes API is running', {
+      status: 'healthy',
+      database: dbConnected ? 'connected' : 'disconnected',
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // 6. 404 Not Found Handler
