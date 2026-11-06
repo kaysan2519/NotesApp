@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authController } from './auth.controller';
 import { validate } from '../../middleware/validate.middleware';
 import { authMiddleware } from '../../middleware/auth.middleware';
+import { loginRateLimiter } from '../../middleware/rate-limit.middleware';
 import { loginSchema, registerSchema } from './auth.validation';
 
 const router = Router();
@@ -13,9 +14,10 @@ router.post(
   (req, res, next) => authController.register(req, res, next)
 );
 
-// POST /api/auth/login
+// POST /api/auth/login (dilindungi rate limiter khusus login)
 router.post(
   '/login',
+  loginRateLimiter,
   validate(loginSchema, 'body'),
   (req, res, next) => authController.login(req, res, next)
 );

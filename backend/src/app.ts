@@ -7,10 +7,14 @@ import { testDatabaseConnection } from './config/database';
 import { sendSuccess } from './utils/response.util';
 import authRoutes from './modules/auth/auth.routes';
 import notesRoutes from './modules/notes/notes.routes';
+import { apiRateLimiter } from './middleware/rate-limit.middleware';
 import { notFoundMiddleware } from './middleware/not-found.middleware';
 import { errorMiddleware } from './middleware/error.middleware';
 
 const app: Application = express();
+
+// Sembunyikan header X-Powered-By
+app.disable('x-powered-by');
 
 // 1. Security HTTP Headers
 app.use(helmet());
@@ -24,16 +28,19 @@ app.use(
   })
 );
 
-// 3. HTTP Request Logging (non-test environment)
+// 3. HTTP Request Logging (tanpa mencatat Authorization header maupun password)
 if (env.NODE_ENV !== 'test') {
-  app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+  app.use(morgan(':method :url :status :response-time ms - :res[content-length]'));
 }
 
-// 4. Body Parser dengan pembatasan ukuran payload (mencegah payload besar)
+// 4. Body Parser dengan pembatasan ukuran payload (mencegah payload terlalu besar)
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// 5. Health Check Endpoint (termasuk pemeriksaan status koneksi database)
+// 5. General API Rate Limiting
+app.use('/api', apiRateLimiter);
+
+// 6. Health Check Endpoint (termasuk pemeriksaan status koneksi database)
 app.get('/api/health', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const dbConnected = await testDatabaseConnection();
@@ -46,14 +53,14 @@ app.get('/api/health', async (_req: Request, res: Response, next: NextFunction) 
   }
 });
 
-// 6. Module Routes
+// 7. Module Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
 
-// 7. 404 Not Found Handler
+// 8. 404 Not Found Handler
 app.use(notFoundMiddleware);
 
-// 8. Centralized Error Handler
+// 9. Centralized Error Handler
 app.use(errorMiddleware);
 
 export default app;
