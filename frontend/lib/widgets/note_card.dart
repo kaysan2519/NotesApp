@@ -110,15 +110,20 @@ class NoteCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  DateFormatter.formatCardDate(note.updatedAt),
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary.withValues(alpha: 0.6),
+                Flexible(
+                  child: Text(
+                    DateFormatter.formatCardDate(note.updatedAt),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary.withValues(alpha: 0.6),
+                    ),
                   ),
                 ),
-                if (note.isPrivate)
+                if (note.isPrivate) ...[
+                  const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -148,6 +153,7 @@ class NoteCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                ],
               ],
             ),
           ],
